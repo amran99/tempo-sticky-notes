@@ -3,7 +3,7 @@ import {
   clamp,
   computeMovePosition,
   computeResizeDimensions,
-  isPointInRect,
+  overlapFraction,
   normalizeRect,
   clampRectToCanvas,
   MIN_WIDTH,
@@ -61,18 +61,27 @@ describe('computeResizeDimensions', () => {
   });
 });
 
-describe('isPointInRect', () => {
-  const rect = { x: 10, y: 10, width: 50, height: 40 };
+describe('overlapFraction', () => {
+  const dropZone = { x: 100, y: 100, width: 50, height: 50 }; // area 2500
 
-  it('returns true for a point inside the rect, including edges', () => {
-    expect(isPointInRect({ x: 30, y: 30 }, rect)).toBe(true);
-    expect(isPointInRect({ x: 10, y: 10 }, rect)).toBe(true);
-    expect(isPointInRect({ x: 60, y: 50 }, rect)).toBe(true);
+  it('returns 0 for non-overlapping rects', () => {
+    expect(overlapFraction({ x: 0, y: 0, width: 50, height: 50 }, dropZone)).toBe(0);
   });
 
-  it('returns false for a point outside the rect', () => {
-    expect(isPointInRect({ x: 5, y: 30 }, rect)).toBe(false);
-    expect(isPointInRect({ x: 30, y: 51 }, rect)).toBe(false);
+  it('returns 1 when the dragged rect fully covers the drop zone', () => {
+    expect(overlapFraction({ x: 50, y: 50, width: 200, height: 200 }, dropZone)).toBe(1);
+  });
+
+  it('returns the exact covered fraction for a partial overlap', () => {
+    // Overlaps the right/bottom 25x25 quadrant of the 50x50 drop zone -> 625/2500 = 0.25
+    const dragged = { x: 125, y: 125, width: 50, height: 50 };
+    expect(overlapFraction(dragged, dropZone)).toBeCloseTo(0.25);
+  });
+
+  it('is order-sensitive: fraction is of the second rect\'s area, not the first\'s', () => {
+    const small = { x: 100, y: 100, width: 10, height: 10 }; // fully inside dropZone
+    expect(overlapFraction(small, dropZone)).toBeCloseTo(100 / 2500);
+    expect(overlapFraction(dropZone, small)).toBe(1);
   });
 });
 

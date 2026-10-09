@@ -22,13 +22,15 @@ export function computeResizeDimensions(startRect: Rect, delta: Delta, canvas: S
   return { width, height };
 }
 
-export function isPointInRect(point: Point, rect: Rect): boolean {
-  return (
-    point.x >= rect.x &&
-    point.x <= rect.x + rect.width &&
-    point.y >= rect.y &&
-    point.y <= rect.y + rect.height
-  );
+/** Minimum fraction of the drop zone's area a dragged note must cover to count as "over" it. */
+export const DELETE_OVERLAP_THRESHOLD = 0.3;
+
+/** Fraction (0-1) of rect `b`'s area that overlaps with rect `a`. */
+export function overlapFraction(a: Rect, b: Rect): number {
+  const overlapX = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
+  const overlapY = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+  const bArea = b.width * b.height;
+  return bArea > 0 ? (overlapX * overlapY) / bArea : 0;
 }
 
 /** Builds a rect from two arbitrary corner points, so a draw gesture works in any direction. */

@@ -12,17 +12,44 @@ interface CanvasProps {
   notes: Note[];
   dispatch: Dispatch<NotesAction>;
   trashArmed: boolean;
+  dragActive: boolean;
   trashRef: RefObject<HTMLDivElement | null>;
   getCanvasRect: () => Rect;
+  getCanvasOrigin: () => Point;
   getTrashRect: () => Rect;
   setTrashArmed: (armed: boolean) => void;
+  setDragActive: (active: boolean) => void;
   drawModeArmed: boolean;
   pendingColor: string;
-  onCreated: () => void;
+  onCreated: (id: string) => void;
+  autoFocusNoteId: string | null;
+  onAutoFocusConsumed: () => void;
+  selectedNoteId: string | null;
+  onSelectNote: (id: string) => void;
+  onDeselect: () => void;
 }
 
 export const Canvas = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
-  { notes, dispatch, trashArmed, trashRef, getCanvasRect, getTrashRect, setTrashArmed, drawModeArmed, pendingColor, onCreated },
+  {
+    notes,
+    dispatch,
+    trashArmed,
+    dragActive,
+    trashRef,
+    getCanvasRect,
+    getCanvasOrigin,
+    getTrashRect,
+    setTrashArmed,
+    setDragActive,
+    drawModeArmed,
+    pendingColor,
+    onCreated,
+    autoFocusNoteId,
+    onAutoFocusConsumed,
+    selectedNoteId,
+    onSelectNote,
+    onDeselect,
+  },
   ref,
 ) {
   const previewRef = useRef<HTMLDivElement>(null);
@@ -64,11 +91,12 @@ export const Canvas = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
         const normalized = clampRectToCanvas(normalizeRect(origin, current), canvas);
         const width = clamp(normalized.width, MIN_WIDTH, Math.max(MIN_WIDTH, canvas.width - normalized.x));
         const height = clamp(normalized.height, MIN_HEIGHT, Math.max(MIN_HEIGHT, canvas.height - normalized.y));
+        const id = crypto.randomUUID();
         dispatch({
           type: 'ADD',
-          note: { id: crypto.randomUUID(), x: normalized.x, y: normalized.y, width, height, text: '', color: pendingColor },
+          note: { id, x: normalized.x, y: normalized.y, width, height, text: '', color: pendingColor },
         });
-        onCreated();
+        onCreated(id);
       }
     },
     onCancel: () => {
@@ -85,18 +113,32 @@ export const Canvas = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
   };
 
   return (
-    <div ref={ref} className={styles.canvas}>
+    <div
+      ref={ref}
+      className={styles.canvas}
+      onPointerDown={(e) => {
+        // Only deselect for a click that lands directly on the canvas background,
+        // not one that bubbled up from a note (which handles its own selection).
+        if (e.target === e.currentTarget) onDeselect();
+      }}
+    >
       {notes.map((note) => (
         <StickyNote
           key={note.id}
           note={note}
           dispatch={dispatch}
           getCanvasRect={getCanvasRect}
+          getCanvasOrigin={getCanvasOrigin}
           getTrashRect={getTrashRect}
           setTrashArmed={setTrashArmed}
+          setDragActive={setDragActive}
+          autoFocus={note.id === autoFocusNoteId}
+          onAutoFocusConsumed={onAutoFocusConsumed}
+          isSelected={note.id === selectedNoteId}
+          onSelect={onSelectNote}
         />
       ))}
-      <TrashZone ref={trashRef} armed={trashArmed} />
+      <TrashZone ref={trashRef} armed={trashArmed} expanded={dragActive} />
       {drawModeArmed && (
         <div
           className={styles.drawLayer}
