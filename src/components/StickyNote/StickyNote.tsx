@@ -37,8 +37,14 @@ function StickyNoteImpl({ note, dispatch, getCanvasRect, getTrashRect, setTrashA
       }
       setTrashArmed(isPointInRect(point, getTrashRect()));
     },
-    onCommit: (delta) => {
+    onCommit: (delta, point) => {
       setTrashArmed(false);
+      // Deletion is decided by where the pointer is actually released, not by
+      // whether the note's rectangle overlaps the trash zone.
+      if (isPointInRect(point, getTrashRect())) {
+        dispatch({ type: 'DELETE', id: note.id });
+        return;
+      }
       const startRect: Rect = { x: note.x, y: note.y, width: note.width, height: note.height };
       const pos = computeMovePosition(startRect, delta, getCanvasRect());
       dispatch({ type: 'MOVE', id: note.id, x: pos.x, y: pos.y });
