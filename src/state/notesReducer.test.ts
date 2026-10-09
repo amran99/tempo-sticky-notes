@@ -62,4 +62,36 @@ describe('notesReducer', () => {
     expect(s1.notes).toEqual(loaded);
     expect(s1.nextZIndex).toBe(6);
   });
+
+  describe('CLAMP_TO_CANVAS', () => {
+    it('repositions a note loaded from a larger viewport back into a smaller canvas', () => {
+      // Created at x=1800 on a wide screen; now viewed at the app's minimum
+      // supported viewport (1024x768) - the exact "persisted at a larger
+      // viewport" scenario.
+      const loaded: Note[] = [{ id: 'a', x: 1800, y: 900, width: 200, height: 150, text: '', color: '#fef08a', zIndex: 1 }];
+      const s1 = notesReducer(initialState, { type: 'LOAD', notes: loaded });
+      const s2 = notesReducer(s1, { type: 'CLAMP_TO_CANVAS', width: 1024, height: 768 });
+      const note = s2.notes[0]!;
+      expect(note.x + note.width).toBeLessThanOrEqual(1024);
+      expect(note.y + note.height).toBeLessThanOrEqual(768);
+      expect(note.width).toBe(200); // repositioned, not shrunk - it still fits
+      expect(note.height).toBe(150);
+    });
+
+    it('shrinks a note wider than the new canvas, not just repositions it', () => {
+      const loaded: Note[] = [{ id: 'a', x: 0, y: 0, width: 1500, height: 150, text: '', color: '#fef08a', zIndex: 1 }];
+      const s1 = notesReducer(initialState, { type: 'LOAD', notes: loaded });
+      const s2 = notesReducer(s1, { type: 'CLAMP_TO_CANVAS', width: 1024, height: 768 });
+      const note = s2.notes[0]!;
+      expect(note.width).toBeLessThanOrEqual(1024);
+      expect(note.x + note.width).toBeLessThanOrEqual(1024);
+    });
+
+    it('leaves an in-bounds note untouched, preserving its object reference', () => {
+      const s1 = notesReducer(initialState, { type: 'ADD', note: baseNote });
+      const s2 = notesReducer(s1, { type: 'CLAMP_TO_CANVAS', width: 1024, height: 768 });
+      expect(s2.notes[0]).toBe(s1.notes[0]);
+      expect(s2).toBe(s1); // whole state reference preserved when nothing changes
+    });
+  });
 });

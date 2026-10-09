@@ -66,6 +66,21 @@ export function Board() {
 
   const handleDeselect = useCallback(() => setSelectedNoteId(null), []);
 
+  // Keeps every note reachable within the current canvas: once on mount (covers
+  // notes restored from localStorage that were created at a larger viewport) and
+  // on every window resize (covers the browser window shrinking while notes are
+  // already on screen). The reducer preserves note/state references when nothing
+  // actually needs to move, so this is a cheap no-op once notes are in bounds.
+  useEffect(() => {
+    const applyClamp = () => {
+      const r = canvasRef.current?.getBoundingClientRect();
+      if (r) dispatch({ type: 'CLAMP_TO_CANVAS', width: r.width, height: r.height });
+    };
+    applyClamp();
+    window.addEventListener('resize', applyClamp);
+    return () => window.removeEventListener('resize', applyClamp);
+  }, []);
+
   // Keyboard delete for the selected note. Ignored while a textarea (note text
   // editing) or other form control has focus, so Backspace/Delete there edits text
   // instead of removing the whole note.

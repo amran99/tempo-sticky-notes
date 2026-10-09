@@ -22,4 +22,5 @@ export type NotesAction =
   | { type: 'SET_TEXT'; id: string; text: string }
   | { type: 'SET_COLOR'; id: string; color: string }
   | { type: 'BRING_TO_FRONT'; id: string }
-  | { type: 'LOAD'; notes: Note[] };
+  | { type: 'LOAD'; notes: Note[] }
+  | { type: 'CLAMP_TO_CANVAS'; width: number; height: number };
