@@ -1,10 +1,22 @@
 .handle {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 14px;
-  height: 14px;
+  right: 2px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
   cursor: nwse-resize;
   touch-action: none;
-  background: linear-gradient(135deg, transparent 50%, rgba(0, 0, 0, 0.3) 50%);
+  border-radius: var(--radius-sm);
+  background-image: radial-gradient(circle, rgba(28, 27, 26, 0.38) 1px, transparent 1px);
+  background-size: 4px 4px;
+  background-position: bottom right;
+  background-repeat: repeat;
+  opacity: 0.7;
+  transition: opacity 0.12s ease, background-color 0.12s ease;
+}
+
+.handle:hover,
+.handle:focus-visible {
+  opacity: 1;
+  background-color: rgba(28, 27, 26, 0.06);
 }

@@ -12,16 +12,24 @@ interface ToolbarProps {
 export function Toolbar({ drawModeArmed, onToggleDrawMode, pendingColor, onPendingColorChange }: ToolbarProps) {
   return (
     <div className={styles.toolbar}>
-      <button type="button" onClick={onToggleDrawMode} aria-pressed={drawModeArmed}>
-        {drawModeArmed ? 'Click-drag on the board…' : 'Add Note'}
+      <button
+        type="button"
+        className={`${styles.addButton} ${drawModeArmed ? styles.armed : ''}`}
+        onClick={onToggleDrawMode}
+        aria-pressed={drawModeArmed}
+      >
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+        {drawModeArmed ? 'Drag on the board…' : 'Add Note'}
       </button>
       <div className={styles.swatches} role="group" aria-label="Note color">
         {PALETTE.map((color) => (
           <button
             key={color}
             type="button"
-            className={styles.swatch}
-            style={{ backgroundColor: color, outline: color === pendingColor ? '2px solid #111827' : 'none' }}
+            className={`${styles.swatch} ${color === pendingColor ? styles.swatchSelected : ''}`}
+            style={{ backgroundColor: color }}
             aria-label={`Select color ${color}`}
             aria-pressed={color === pendingColor}
             onClick={() => onPendingColorChange(color)}

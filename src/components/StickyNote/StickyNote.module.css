@@ -2,29 +2,59 @@
   position: absolute;
   display: flex;
   flex-direction: column;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-resting);
   overflow: hidden;
+  transition: box-shadow 0.15s ease;
+}
+
+.interacting {
+  box-shadow: var(--shadow-lifted);
 }
 
 .header {
-  height: 24px;
+  height: 26px;
   flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(28, 27, 26, 0.06);
   cursor: grab;
   touch-action: none;
+}
+
+.header:active {
+  cursor: grabbing;
+}
+
+.grip {
+  width: 28px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: rgba(28, 27, 26, 0.2);
 }
 
 .body {
   flex: 1;
   width: 100%;
-  padding: 8px;
+  padding: 10px 12px;
   font-size: 14px;
+  line-height: 1.45;
   font-family: inherit;
+  color: var(--color-ink);
   white-space: pre-wrap;
   overflow: auto;
   resize: none;
   border: none;
   outline: none;
   background: transparent;
+}
+
+.body:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: -2px;
+}
+
+.body::placeholder {
+  color: var(--color-ink-soft);
 }
