@@ -1,32 +1,55 @@
-# React + TypeScript + Vite
+# Sticky Notes
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A single-page sticky-notes board built with React, TypeScript, and Vite. Create notes by
+drawing a rectangle on the canvas, move them by dragging their header, resize from the
+bottom-right handle, and delete by dragging a note onto the trash icon. Notes also
+support inline text editing, a color picker, bring-to-front on interaction, and persist
+to `localStorage` across reloads.
 
-Currently, two official plugins are available:
+## Running
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Open the printed local URL. Desktop browsers only (Chrome, Firefox, Edge), minimum
+viewport 1024×768.
+
+## Testing
+
+```bash
+npm test
+```
+
+## Building
+
+```bash
+npm run build
+npm run preview
+```
+
+## Architecture
+
+State lives in a single `useReducer` inside `Board`, with no React Context — `Board`
+passes `dispatch` directly to each `StickyNote`, which builds its own action objects.
+The reducer's immutable update pattern means only the changed note gets a new object
+reference, so combined with `React.memo` a note's re-render never touches its siblings.
+`localStorage` is read synchronously via `useReducer`'s lazy-init argument and written
+back on every change, so notes persist across reloads without a separate load effect.
+
+Move, resize, and create-by-draw all share one pointer-event lifecycle
+(`useDragInteraction`): `pointermove` only records the latest delta into a ref, and a
+single `requestAnimationFrame` per interaction applies it directly to the DOM via a ref
+mutation, so dragging causes zero React re-renders and one DOM write per frame.
+`pointerup` reads its own event coordinates to compute the final committed value and
+dispatches it; `pointercancel` and `lostpointercapture` both revert the DOM mutation
+with no dispatch, so an aborted interaction never reaches the reducer. The trash zone's
+"armed" highlight is change-gated through a ref comparison so dragging near it doesn't
+trigger a re-render on every animation frame.
+
+Automated tests cover the reducer, the geometry/clamping math, and the storage
+validator, since that logic is pure and deterministic. Pointer-driven interactions
+(move, resize, create, trash-delete, text editing, and `localStorage` round-tripping)
+were verified manually in Chrome, Firefox, and Edge. Keyboard-operable move/resize is
+not implemented; every other control is keyboard-accessible with visible focus states.

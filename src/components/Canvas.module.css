@@ -11,6 +11,7 @@
 .drawLayer {
   position: absolute;
   inset: 0;
+  z-index: 8000;
   cursor: crosshair;
   touch-action: none;
 }
