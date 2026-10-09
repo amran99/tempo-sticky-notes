@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { Delta, Point } from './geometry';
 
 interface DragCallbacks {
@@ -55,7 +55,22 @@ export function useDragInteraction({ onFrame, onCommit, onCancel }: DragCallback
     activePointerIdRef.current = null;
   }, [cancelFrame]);
 
+  // Cancels any pending rAF if the component using this hook unmounts mid-
+  // interaction (e.g. the note it's wired to is deleted via the keyboard while
+  // being dragged). Without this, a frame already scheduled by onPointerMove
+  // keeps firing after unmount, calling onFrame with stale closures over props
+  // (geometry getters, dispatch) that no longer correspond to anything on screen.
+  useEffect(() => () => cancelFrame(), [cancelFrame]);
+
   const onPointerDown = useCallback((e: React.PointerEvent) => {
+    // Primary button only (mouse secondary/auxiliary buttons report 1/2; touch
+    // and pen contacts always report 0, so this never rejects them).
+    if (e.button !== 0) return;
+    // An interaction is already active for a different pointer - ignore this
+    // one rather than silently hijacking it (which would reset the start
+    // position to the new pointer and strand the original pointer's future
+    // move/up events, since activePointerIdRef would no longer match them).
+    if (startRef.current !== null) return;
     (e.target as Element).setPointerCapture(e.pointerId);
     activePointerIdRef.current = e.pointerId;
     startRef.current = { x: e.clientX, y: e.clientY };
