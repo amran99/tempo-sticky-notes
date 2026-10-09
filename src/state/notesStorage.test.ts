@@ -63,4 +63,15 @@ describe('notesStorage', () => {
   it('loadInitialState returns nextZIndex 1 when storage is empty', () => {
     expect(loadInitialState()).toEqual({ notes: [], nextZIndex: 1 });
   });
+
+  it('saveNotes does not throw when localStorage.setItem fails (quota exceeded, private browsing, etc.)', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException('QuotaExceededError');
+      },
+      removeItem: () => {},
+    });
+    expect(() => saveNotes([validNote])).not.toThrow();
+  });
 });

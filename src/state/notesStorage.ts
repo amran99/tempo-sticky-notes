@@ -30,7 +30,14 @@ export function loadNotes(): Note[] {
 }
 
 export function saveNotes(notes: Note[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  } catch {
+    // Storage can fail (quota exceeded, private browsing, disabled entirely) -
+    // the board keeps working in-memory; it just won't persist until storage
+    // recovers. Must not throw: this runs from Board's effect on every notes
+    // change, and an uncaught throw there would crash the whole component tree.
+  }
 }
 
 /**
