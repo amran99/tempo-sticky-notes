@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type { Dispatch } from 'react';
 import type { Note, NotesAction } from '../../types';
 import type { Point, Rect } from '../../interaction/geometry';
@@ -45,16 +45,6 @@ function StickyNoteImpl({
   // progress; never read by the interaction/geometry logic itself.
   const [isInteracting, setIsInteracting] = useState(false);
 
-  // Clears any leftover drag transform exactly when the committed position lands,
-  // so there's never a frame showing neither the in-progress drag nor the new spot.
-  useLayoutEffect(() => {
-    if (rootRef.current) rootRef.current.style.transform = '';
-  }, [note.x, note.y]);
-
-  // Unlike transform, width/height ARE part of React's declarative style prop below,
-  // so React's own re-render after a committed RESIZE already sets the correct pixel
-  // values in the same commit — no separate reconciliation effect needed here.
-
   // Focuses this note's text once, right after it's drawn, then tells Board to
   // clear the request so it never re-fires on a later unrelated re-render (and
   // never fires at all for moved/resized/restored notes, which don't set it).
@@ -96,6 +86,14 @@ function StickyNoteImpl({
         dispatch({ type: 'DELETE', id: note.id });
         return;
       }
+      // Clear the drag transform synchronously here rather than relying on a
+      // re-render to do it: if the committed x/y come out numerically equal to
+      // the note's current x/y (e.g. dragged out and back), the reducer still
+      // produces a new object (so this component re-renders), but note.x/note.y
+      // themselves don't change - a cleanup effect keyed on those values would
+      // never fire, leaving the last intermediate drag transform stuck on the
+      // DOM even though React believes the note is back at its original spot.
+      if (rootRef.current) rootRef.current.style.transform = '';
       dispatch({ type: 'MOVE', id: note.id, x: pos.x, y: pos.y });
     },
     onCancel: () => {
@@ -119,6 +117,19 @@ function StickyNoteImpl({
       setIsInteracting(false);
       const startRect: Rect = { x: note.x, y: note.y, width: note.width, height: note.height };
       const size = computeResizeDimensions(startRect, delta, getCanvasRect());
+      // Set the DOM to the exact committed size directly, rather than trusting
+      // React's re-render to do it: width/height ARE part of the declarative
+      // style prop, but React's diffing only touches a style property when its
+      // value actually changes between renders. If the resized-then-released
+      // size comes out numerically equal to the note's current width/height
+      // (e.g. resized out and back), React sees no change in that style value
+      // and never reapplies it, leaving the last intermediate imperative size
+      // stuck on the DOM even though the note is meant to be back at its
+      // original size.
+      if (rootRef.current) {
+        rootRef.current.style.width = `${size.width}px`;
+        rootRef.current.style.height = `${size.height}px`;
+      }
       dispatch({ type: 'RESIZE', id: note.id, width: size.width, height: size.height });
     },
     onCancel: () => {
