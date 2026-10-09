@@ -44,10 +44,6 @@ function StickyNoteImpl({
   // Purely cosmetic (elevated shadow + slight lift) while a move or resize is in
   // progress; never read by the interaction/geometry logic itself.
   const [isInteracting, setIsInteracting] = useState(false);
-  // Tracks whether the textarea itself currently has focus, so the note-level
-  // "selected" ring can step aside while the textarea's own focus ring is showing
-  // instead of stacking two rings on top of each other.
-  const [isTextFocused, setIsTextFocused] = useState(false);
 
   // Clears any leftover drag transform exactly when the committed position lands,
   // so there's never a frame showing neither the in-progress drag nor the new spot.
@@ -140,7 +136,7 @@ function StickyNoteImpl({
   return (
     <div
       ref={rootRef}
-      className={`${styles.note} ${isInteracting ? styles.interacting : ''} ${isSelected && !isTextFocused ? styles.selected : ''}`}
+      className={`${styles.note} ${isInteracting ? styles.interacting : ''} ${isSelected ? styles.selected : ''}`}
       style={{
         left: note.x,
         top: note.y,
@@ -182,8 +178,11 @@ function StickyNoteImpl({
           dispatch({ type: 'BRING_TO_FRONT', id: note.id });
           onSelect(note.id);
         }}
-        onFocus={() => setIsTextFocused(true)}
-        onBlur={() => setIsTextFocused(false)}
+        // Also select on focus (not just pointerdown) so tabbing into the text
+        // with the keyboard shows the same selected-note ring - but without
+        // bringing it to front, since keyboard focus traversal shouldn't reorder
+        // note stacking the way an intentional click does.
+        onFocus={() => onSelect(note.id)}
         aria-label="Note text"
       />
       <ResizeHandle
