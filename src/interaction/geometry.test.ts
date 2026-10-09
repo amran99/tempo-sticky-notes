@@ -5,7 +5,7 @@ import {
   computeResizeDimensions,
   overlapFraction,
   normalizeRect,
-  clampRectToCanvas,
+  resolveCreateRect,
   MIN_WIDTH,
   MIN_HEIGHT,
 } from './geometry';
@@ -78,10 +78,20 @@ describe('overlapFraction', () => {
     expect(overlapFraction(dragged, dropZone)).toBeCloseTo(0.25);
   });
 
-  it('is order-sensitive: fraction is of the second rect\'s area, not the first\'s', () => {
+  it('is symmetric: fraction is relative to whichever rect is smaller, not argument order', () => {
     const small = { x: 100, y: 100, width: 10, height: 10 }; // fully inside dropZone
-    expect(overlapFraction(small, dropZone)).toBeCloseTo(100 / 2500);
+    expect(overlapFraction(small, dropZone)).toBe(1);
     expect(overlapFraction(dropZone, small)).toBe(1);
+  });
+
+  it('regression: a minimum-size note fully inside a much larger drop zone is deletable', () => {
+    // The expanded trash drop zone (168x128) vs an 80x60 minimum-size note - this
+    // is the exact shape of the "notes at minimum size can't be deleted" bug:
+    // measured against the drop zone's own area the note could cover at most
+    // 4800/21504 ≈ 0.22, always under any reasonable threshold.
+    const dropZoneLarge = { x: 1100, y: 770, width: 168, height: 128 };
+    const minNote = { x: 1150, y: 800, width: MIN_WIDTH, height: MIN_HEIGHT }; // fully inside
+    expect(overlapFraction(minNote, dropZoneLarge)).toBe(1);
   });
 });
 
@@ -103,22 +113,44 @@ describe('normalizeRect', () => {
   });
 });
 
-describe('clampRectToCanvas', () => {
-  it('leaves an in-bounds rect untouched', () => {
-    expect(clampRectToCanvas({ x: 10, y: 10, width: 100, height: 80 }, canvas)).toEqual({
-      x: 10, y: 10, width: 100, height: 80,
+describe('resolveCreateRect', () => {
+  it('resolves a normal in-bounds draw unchanged', () => {
+    expect(resolveCreateRect({ x: 100, y: 100 }, { x: 300, y: 250 }, canvas)).toEqual({
+      x: 100, y: 100, width: 200, height: 150,
     });
   });
 
-  it('clamps a rect whose origin is past the canvas edge', () => {
-    expect(clampRectToCanvas({ x: 1200, y: 900, width: 100, height: 80 }, canvas)).toEqual({
-      x: 1000, y: 800, width: 0, height: 0,
+  it('enforces the minimum size for a near-zero drag away from any edge', () => {
+    expect(resolveCreateRect({ x: 400, y: 400 }, { x: 402, y: 401 }, canvas)).toEqual({
+      x: 400, y: 400, width: MIN_WIDTH, height: MIN_HEIGHT,
     });
   });
 
-  it('clamps a rect that overflows the canvas from a valid origin', () => {
-    expect(clampRectToCanvas({ x: 900, y: 700, width: 300, height: 300 }, canvas)).toEqual({
-      x: 900, y: 700, width: 100, height: 100,
+  it('regression: a tiny drag flush against the right/bottom edge still fits fully on-canvas', () => {
+    // Drawing right at the canvas's bottom-right corner - the old implementation
+    // forced width/height up to the minimum without ever moving x/y, so the note
+    // extended past the canvas edge and was partly invisible/unreachable.
+    const rect = resolveCreateRect({ x: 998, y: 798 }, { x: 999, y: 799 }, canvas);
+    expect(rect.width).toBe(MIN_WIDTH);
+    expect(rect.height).toBe(MIN_HEIGHT);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(canvas.width);
+    expect(rect.y + rect.height).toBeLessThanOrEqual(canvas.height);
+    expect(rect.x).toBeGreaterThanOrEqual(0);
+    expect(rect.y).toBeGreaterThanOrEqual(0);
+  });
+
+  it('regression: a tiny drag flush against the top/left edge still fits fully on-canvas', () => {
+    const rect = resolveCreateRect({ x: 1, y: 1 }, { x: 0, y: 0 }, canvas);
+    expect(rect).toEqual({ x: 0, y: 0, width: MIN_WIDTH, height: MIN_HEIGHT });
+  });
+
+  it('keeps the drawn size and shifts the origin back when the drag overshoots the edge', () => {
+    // Dragged a 300x300 rect starting at (900,700) in an 800x1000 canvas, which
+    // would overflow past the right/bottom edge if the origin stayed put. The
+    // drawn SIZE is honored (the same rule used for the minimum-size case above);
+    // the origin slides back just enough to keep the whole rect on-canvas.
+    expect(resolveCreateRect({ x: 900, y: 700 }, { x: 1200, y: 1000 }, canvas)).toEqual({
+      x: 700, y: 500, width: 300, height: 300,
     });
   });
 });

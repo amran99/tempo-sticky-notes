@@ -2,7 +2,7 @@ import { forwardRef, useRef, useState } from 'react';
 import type { Dispatch, RefObject } from 'react';
 import type { Note, NotesAction } from '../types';
 import type { Point, Rect } from '../interaction/geometry';
-import { MIN_WIDTH, MIN_HEIGHT, clamp, normalizeRect, clampRectToCanvas } from '../interaction/geometry';
+import { resolveCreateRect } from '../interaction/geometry';
 import { useDragInteraction } from '../interaction/useDragInteraction';
 import { StickyNote } from './StickyNote/StickyNote';
 import { TrashZone } from './TrashZone';
@@ -78,23 +78,22 @@ export const Canvas = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
       const origin = originRef.current;
       if (!origin) return;
       const current = toCanvasLocal(point);
-      const normalized = normalizeRect(origin, current);
-      applyPreviewRect(clampRectToCanvas(normalized, getCanvasRect()));
+      // Same resolver as commit, so the live preview always matches what
+      // releasing right now would actually create (minimum size enforced and
+      // kept fully on-canvas even near an edge).
+      applyPreviewRect(resolveCreateRect(origin, current, getCanvasRect()));
     },
     onCommit: (_delta, point) => {
       const origin = originRef.current;
       setPreviewVisible(false);
       originRef.current = null;
       if (origin) {
-        const canvas = getCanvasRect();
         const current = toCanvasLocal(point);
-        const normalized = clampRectToCanvas(normalizeRect(origin, current), canvas);
-        const width = clamp(normalized.width, MIN_WIDTH, Math.max(MIN_WIDTH, canvas.width - normalized.x));
-        const height = clamp(normalized.height, MIN_HEIGHT, Math.max(MIN_HEIGHT, canvas.height - normalized.y));
+        const rect = resolveCreateRect(origin, current, getCanvasRect());
         const id = crypto.randomUUID();
         dispatch({
           type: 'ADD',
-          note: { id, x: normalized.x, y: normalized.y, width, height, text: '', color: pendingColor },
+          note: { id, x: rect.x, y: rect.y, width: rect.width, height: rect.height, text: '', color: pendingColor },
         });
         onCreated(id);
       }
