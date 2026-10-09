@@ -2,8 +2,9 @@ import { memo, useLayoutEffect, useRef } from 'react';
 import type { Dispatch } from 'react';
 import type { Note, NotesAction } from '../../types';
 import type { Rect } from '../../interaction/geometry';
-import { computeMovePosition, isPointInRect } from '../../interaction/geometry';
+import { computeMovePosition, computeResizeDimensions, isPointInRect } from '../../interaction/geometry';
 import { useDragInteraction } from '../../interaction/useDragInteraction';
+import { ResizeHandle } from './ResizeHandle';
 import styles from './StickyNote.module.css';
 
 interface StickyNoteProps {
@@ -23,6 +24,10 @@ function StickyNoteImpl({ note, dispatch, getCanvasRect, getTrashRect, setTrashA
     if (rootRef.current) rootRef.current.style.transform = '';
   }, [note.x, note.y]);
 
+  // Unlike transform, width/height ARE part of React's declarative style prop below,
+  // so React's own re-render after a committed RESIZE already sets the correct pixel
+  // values in the same commit — no separate reconciliation effect needed here.
+
   const move = useDragInteraction({
     onFrame: (delta, point) => {
       const startRect: Rect = { x: note.x, y: note.y, width: note.width, height: note.height };
@@ -41,6 +46,31 @@ function StickyNoteImpl({ note, dispatch, getCanvasRect, getTrashRect, setTrashA
     onCancel: () => {
       setTrashArmed(false);
       if (rootRef.current) rootRef.current.style.transform = '';
+    },
+  });
+
+  const resize = useDragInteraction({
+    onFrame: (delta) => {
+      const startRect: Rect = { x: note.x, y: note.y, width: note.width, height: note.height };
+      const size = computeResizeDimensions(startRect, delta, getCanvasRect());
+      if (rootRef.current) {
+        rootRef.current.style.width = `${size.width}px`;
+        rootRef.current.style.height = `${size.height}px`;
+      }
+    },
+    onCommit: (delta) => {
+      const startRect: Rect = { x: note.x, y: note.y, width: note.width, height: note.height };
+      const size = computeResizeDimensions(startRect, delta, getCanvasRect());
+      dispatch({ type: 'RESIZE', id: note.id, width: size.width, height: size.height });
+    },
+    onCancel: () => {
+      // Unlike move's transform (a pure additive offset), width/height here directly
+      // overwrite the declarative style value, so reverting means restoring the
+      // actual committed pixel size, not clearing to empty.
+      if (rootRef.current) {
+        rootRef.current.style.width = `${note.width}px`;
+        rootRef.current.style.height = `${note.height}px`;
+      }
     },
   });
 
@@ -67,6 +97,13 @@ function StickyNoteImpl({ note, dispatch, getCanvasRect, getTrashRect, setTrashA
         onLostPointerCapture={move.onLostPointerCapture}
       />
       <div className={styles.body}>{note.text}</div>
+      <ResizeHandle
+        onPointerDown={resize.onPointerDown}
+        onPointerMove={resize.onPointerMove}
+        onPointerUp={resize.onPointerUp}
+        onPointerCancel={resize.onPointerCancel}
+        onLostPointerCapture={resize.onLostPointerCapture}
+      />
     </div>
   );
 }
