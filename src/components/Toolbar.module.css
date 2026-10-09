@@ -1,0 +1,18 @@
+.toolbar {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 10000;
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background: #111827;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+}

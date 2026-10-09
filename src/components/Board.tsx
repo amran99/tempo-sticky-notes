@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useReducer, useRef, useState } from 'react';
 import { notesReducer, initialState } from '../state/notesReducer';
 import type { Rect } from '../interaction/geometry';
 import { Canvas } from './Canvas';
+import { Toolbar } from './Toolbar';
 import styles from './Board.module.css';
+
+const DEFAULT_NOTE_COLOR = '#fef08a';
 
 export function Board() {
   const [state, dispatch] = useReducer(notesReducer, initialState);
@@ -10,6 +13,8 @@ export function Board() {
   const trashRef = useRef<HTMLDivElement>(null);
   const [trashArmed, setTrashArmed] = useState(false);
   const trashArmedRef = useRef(false);
+  const [drawModeArmed, setDrawModeArmed] = useState(false);
+  const [pendingColor] = useState(DEFAULT_NOTE_COLOR); // becomes a real picker once colors land
 
   // Only triggers a re-render when the armed state actually flips, instead of on
   // every animation frame while a note is dragged over/near the trash zone.
@@ -29,21 +34,9 @@ export function Board() {
     return r ? { x: r.left, y: r.top, width: r.width, height: r.height } : { x: 0, y: 0, width: 0, height: 0 };
   }, []);
 
-  // Temporary: creation isn't wired yet, so seed one note to exercise move/resize
-  // against. Removed once the create-by-draw interaction lands. Guarded against
-  // StrictMode's dev-mode double-invocation so it doesn't seed two overlapping notes.
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (seededRef.current) return;
-    seededRef.current = true;
-    dispatch({
-      type: 'ADD',
-      note: { id: crypto.randomUUID(), x: 100, y: 100, width: 160, height: 120, text: '', color: '#fef08a' },
-    });
-  }, []);
-
   return (
     <div className={styles.board}>
+      <Toolbar drawModeArmed={drawModeArmed} onToggleDrawMode={() => setDrawModeArmed((v) => !v)} />
       <Canvas
         ref={canvasRef}
         notes={state.notes}
@@ -53,6 +46,9 @@ export function Board() {
         getCanvasRect={getCanvasRect}
         getTrashRect={getTrashRect}
         setTrashArmed={setTrashArmedIfChanged}
+        drawModeArmed={drawModeArmed}
+        pendingColor={pendingColor}
+        onCreated={() => setDrawModeArmed(false)}
       />
     </div>
   );

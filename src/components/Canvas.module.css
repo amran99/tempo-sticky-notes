@@ -5,3 +5,17 @@
   overflow: hidden;
   background: #f3f4f6;
 }
+
+.drawLayer {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.preview {
+  position: absolute;
+  border: 2px dashed #111827;
+  background: rgba(17, 24, 39, 0.08);
+  pointer-events: none;
+}
