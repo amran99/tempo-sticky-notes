@@ -102,7 +102,19 @@ function StickyNoteImpl({ note, dispatch, getCanvasRect, getTrashRect, setTrashA
         onPointerCancel={move.onPointerCancel}
         onLostPointerCapture={move.onLostPointerCapture}
       />
-      <div className={styles.body}>{note.text}</div>
+      <textarea
+        className={styles.body}
+        value={note.text}
+        onChange={(e) => dispatch({ type: 'SET_TEXT', id: note.id, text: e.target.value })}
+        onPointerDown={(e) => {
+          // Let clicking into the text still bring the note to front, without
+          // also starting the header's drag path (the outer div's pointerdown
+          // would otherwise fight text selection/cursor placement here).
+          e.stopPropagation();
+          dispatch({ type: 'BRING_TO_FRONT', id: note.id });
+        }}
+        aria-label="Note text"
+      />
       <ResizeHandle
         onPointerDown={resize.onPointerDown}
         onPointerMove={resize.onPointerMove}

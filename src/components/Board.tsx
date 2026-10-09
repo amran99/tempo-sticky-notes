@@ -1,5 +1,6 @@
-import { useCallback, useReducer, useRef, useState } from 'react';
-import { notesReducer, initialState } from '../state/notesReducer';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { notesReducer } from '../state/notesReducer';
+import { loadInitialState, saveNotes } from '../state/notesStorage';
 import type { Rect } from '../interaction/geometry';
 import { Canvas } from './Canvas';
 import { Toolbar } from './Toolbar';
@@ -8,13 +9,20 @@ import styles from './Board.module.css';
 const DEFAULT_NOTE_COLOR = '#fef08a';
 
 export function Board() {
-  const [state, dispatch] = useReducer(notesReducer, initialState);
+  // Lazy-init reads localStorage synchronously, before first render, so there's
+  // no mount-time flash and no risk of a later effect racing with (and
+  // overwriting) freshly-loaded notes.
+  const [state, dispatch] = useReducer(notesReducer, undefined, loadInitialState);
   const canvasRef = useRef<HTMLDivElement>(null);
   const trashRef = useRef<HTMLDivElement>(null);
   const [trashArmed, setTrashArmed] = useState(false);
   const trashArmedRef = useRef(false);
   const [drawModeArmed, setDrawModeArmed] = useState(false);
-  const [pendingColor] = useState(DEFAULT_NOTE_COLOR); // becomes a real picker once colors land
+  const [pendingColor, setPendingColor] = useState(DEFAULT_NOTE_COLOR);
+
+  useEffect(() => {
+    saveNotes(state.notes);
+  }, [state.notes]);
 
   // Only triggers a re-render when the armed state actually flips, instead of on
   // every animation frame while a note is dragged over/near the trash zone.
@@ -36,7 +44,12 @@ export function Board() {
 
   return (
     <div className={styles.board}>
-      <Toolbar drawModeArmed={drawModeArmed} onToggleDrawMode={() => setDrawModeArmed((v) => !v)} />
+      <Toolbar
+        drawModeArmed={drawModeArmed}
+        onToggleDrawMode={() => setDrawModeArmed((v) => !v)}
+        pendingColor={pendingColor}
+        onPendingColorChange={setPendingColor}
+      />
       <Canvas
         ref={canvasRef}
         notes={state.notes}
