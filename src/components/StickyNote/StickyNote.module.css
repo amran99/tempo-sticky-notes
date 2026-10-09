@@ -1,0 +1,24 @@
+.note {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.header {
+  height: 24px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.08);
+  cursor: grab;
+  touch-action: none;
+}
+
+.body {
+  flex: 1;
+  padding: 8px;
+  font-size: 14px;
+  white-space: pre-wrap;
+  overflow: auto;
+}
